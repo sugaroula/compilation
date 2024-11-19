@@ -1,12 +1,15 @@
+
 (**
    Translation from IMP to MIPS.
 
    Result of an expression stored in $t0. Every intermediate value on the
    stack, every function argument and every local variable also on the stack.
  *)
- 
+
 open Imp
 open Mips
+
+exception Error of string
 
 let tmp_regs = [| t0; t1; t2; t3; t4; t5; t6; t7; t8; t9 |]
 let var_regs = [| s0; s1; s2; s3; s4; s5; s6; s7 |]
@@ -17,7 +20,7 @@ let rec tr_expr i e alloc =
   | Var x -> (
       match Hashtbl.find_opt alloc x with
       | Some r -> move tmp_regs.(i) r
-      | None -> raise (Error "Variable not allocated")
+      | None -> raise (Error ("Variable " ^ x ^ " not allocated"))
     )
   | Cst n -> li tmp_regs.(i) n
   | Binop (op, e1, e2) ->

@@ -1,0 +1,67 @@
+type token =
+    WITH
+  | TYPE
+  | TINT
+  | THEN
+  | TBOOL
+  | STAR
+  | SND
+  | SLASH
+  | RPAR
+  | REC
+  | PLUS
+  | OR
+  | OF
+  | NOT
+  | NEQ
+  | MOD
+  | MINUS
+  | MATCH
+  | LT
+  | LSR
+  | LSL
+  | LPAR
+  | LET
+  | LE
+  | INT of int
+  | IN
+  | IF
+  | IDENT of string
+  | GT
+  | GE
+  | FUN
+  | FST
+  | EQ
+  | EOF
+  | ELSE
+  | CSTR of string
+  | COMMA
+  | COLON
+  | BOOL of bool
+  | BAR
+  | ARROW
+  | AND
+val menhir_begin_marker : int
+val xv_unop : Miniml.uop
+val xv_typed_ident : string * Miniml.typ
+val xv_type_def : Miniml.typ_decl
+val xv_ty : Miniml.typ
+val xv_simple_ty : Miniml.typ
+val xv_simple_expression : Miniml.expr
+val xv_separated_nonempty_list_STAR_simple_ty_ : Miniml.typ list
+val xv_separated_nonempty_list_COMMA_pattern_ : Miniml.pattern list
+val xv_separated_nonempty_list_COMMA_expression_ : Miniml.expr list
+val xv_separated_nonempty_list_BAR_cstr_def_ : Miniml.cstr_decl list
+val xv_separated_list_COMMA_pattern_ : Miniml.pattern list
+val xv_separated_list_COMMA_expression_ : Miniml.expr list
+val xv_program : Miniml.prog
+val xv_pattern : Miniml.pattern
+val xv_loption_separated_nonempty_list_COMMA_pattern__ : Miniml.pattern list
+val xv_loption_separated_nonempty_list_COMMA_expression__ : Miniml.expr list
+val xv_list_typed_ident_ : (string * Miniml.typ) list
+val xv_list_type_def_ : Miniml.typ_decl list
+val xv_expression : Miniml.expr
+val xv_cstr_def : Miniml.cstr_decl
+val xv_cases : Miniml.case list
+val xv_binop : Miniml.bop
+val menhir_end_marker : int

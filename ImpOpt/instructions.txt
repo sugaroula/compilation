@@ -1,0 +1,219 @@
+================================================
+ Register allocation for local variables in IMP
+================================================
+
+We take as starting point a simple MIPS compiler for the core imperative
+language IMP, where:
+
+- expressions are computed using registers $t0 to $t9
+- local variables are allocated on the stack
+
+The goal of this exercise is to allocate (part of) the local variables in
+registers $s0 to $s7. The allocation is performed separately for each function.
+
+We propose the following strategy for allocating local variables of a function:
+1/ number the instructions in textual order
+2/ compute the set of variables that are live on entry to each numbered instruction
+3/ deduce a liveness interval for each local variable
+4/ perform a linear scan of the liveness intervals and associate each variable
+   to a register or a stack location
+
+
+Details on the steps.
+=====================
+
+1/ Numbering. 
+-------------
+Given in the code skeleton.
+
+2/ Liveness analysis.
+---------------------
+Write [vset] the type of sets of variables. During liveness analysis, we assume
+an array [live: vset array] in which, for any instruction number [k], the entry
+[live.(k)] contains the variables that are known to be live on entry to the
+instruction number [k].
+Liveness analysis can be performed directly on the numbered AST using a 
+recursive function [lvin_instr: instr -> vset -> vset] that takes as parameters:
+- a numbered instruction [i] and
+- a set of variables [vset], giving the variables that are assumed to be live
+  on exit to the numbered instruction [i]
+and:
+- returns a set of variables [vset'] that gives the variables that are known
+  to be live on entry to the numbered instruction [i],
+- as a side effect, updates the array [live] with the live variables sets
+  computed for the analyzed instructions (the numbered instruction [i] itself,
+  and also its subinstructions if [i] is compound).
+This function can be defined together with a variant on instructions sequences
+[lvin_seq: instr list -> vset -> vset] with the same specification.
+
+
+Equations for computing lvin (not distinguishing _instr and _seq):
+
+| Instruction [i]     | Result of lvin(i, lvout)                           |
++---------------------+----------------------------------------------------+
+|  print(e);          |  U(e) union lvout                                  |
+|  e;                 |  U(e) union lvout                                  |
++---------------------+----------------------------------------------------+
+|  return(e);         |  U(e)                                              |
++---------------------+----------------------------------------------------+
+|  x = e;             |  U(e) union (lvout minus {x})                      |
++---------------------+----------------------------------------------------+
+|  s1; s2             |  lvin(s1, lvin(s2, lvout))                         |
++---------------------+----------------------------------------------------+
+|  while(e){s}        |  U(e) union lvin(s, lvout)                         |
++---------------------+----------------------------------------------------+
+|  if(e){s1}else{s2}  |  U(e) union lvin(s1, lvout) union lvin(s2, lvout)  |
++---------------------+----------------------------------------------------+
+
+These equations are stated with the set [U(e)] giving the local variables that
+are used (read) by the expression [e]. This set is defined by the following
+equations:
+
+               U(n)  =  {}
+               U(x)  =  {x}
+          U(unop e)  =  U(e)
+     U(e1 binop e2)  =  U(e1) union U(e2)
+  U(f(e1, ..., eN))  =  U(e1) union ... union U(eN)
+
+There is a subtlety on the treatment of the while loop: the equation does give
+the right set of live variables on entry to the loop, but it does so using only
+partial information that do not take into account the "looping" aspect of the
+loop. As a consequence, the live set computed for the instructions of the body
+of the loop might be incomplete. To correct this, the [lvin] function has to be
+run a second time on the loop, taking as parameter the set of variables live on
+entry computed by the first pass.
+
+
+3/ Computing the liveness intervals.
+------------------------------------
+The liveness interval of a variable [x] is the smallest interval [a:b] such that
+[x] is not live on entry of any instruction whose number is smaller than [a] or
+greater than [b]. It can be computed by scanning the [live] array for the first
+and the last variable sets in which [x] appear.
+Below, we write (x,[a:b]) for the live interval of a variable [x].
+
+
+4/ Linear scan.
+---------------
+The linear scan register allocation algorithm scans all liveness intervals
+in chronological order. For this, the liveness intervals of variables are
+sorted by ascending lower bound, with equals sorted by ascending upper bound.
+We consider as "current time" the starting date (ie: lower bound) of the next
+interval.
+
+The algorithm uses three data structures:
+* A list [active] of currently active live intervals, sorted by ascending
+  upper bound. The active intervals have two properties: they contain the
+  current time, and they correspond to a variable allocated to a register.
+  The list is initially empty.
+* A list [available] of currently available registers. Initially, it contains
+  all the registers [$s0-$s7].
+* A hashtable [alloc] giving an allocation for every variable already scanned.
+  An allocation can be either one of the registers, or a special value 
+  indicating that the variable will be stored on the stack (a variable stored
+  on the stack is called a "spill" variable)
+
+The algorithm then considers each liveness interval (x,[a:b]) in order and
+perform the following steps. Let [x] be the variable associated to the
+considered interval.
+* For each active interval (x',[a':b']) whose upper bound is smaller than [b],
+  remove (x',[a':b']) from active, and put back the register associated to [x']
+  into the [available] list.
+* If the [available] list is not empty, remove one of its registers and
+  associate it to [x]. Then put the interval in [active]. Reminder: the [active]
+  list should be sorted by ascending upper bound.
+* Otherwise, allocate [x] on the stack.
+
+Improvement: if the [available] list is empty, and at least one active interval
+(x',[a':b']) has an ending date b' > b, then
+- associate [x] to the register that was initially given to [x']
+- allocate [x'] on the stack instead
+- remove (x',[a':b']) from the [active] list, and insert (x,[a:b]) instead (at
+  the appropriate position)
+  
+  
+Tasks
+=====
+
+This folder contains a standalone and working Imp to Mips compiler, with
+the following files.
+
+Language definition:
+  - imp.ml         AST
+  - implexer.mll   parsing (lexical part)
+  - impparser.mly  parsing (grammatical part)
+
+Basic translation to MIPS assembly:
+  - mips.ml        library for generating mips assembly
+  - imp2mips.ml    basic translation to mips
+
+Template files for register allocation:
+  - nimp.ml        AST with numbered instructions
+  - liveness.ml    skeleton for liveness analysis
+  - linearscan.ml  skeleton for linear scan allocation
+
+The compiler itself:
+  - impc.ml        main
+
+
+Main task
+---------
+You have to complete the two files [liveness.ml] and [linearscan.ml], and
+adapt the file [imp2mips.ml] to build an optimizing Imp to Mips compiler.
+Look for [failwith "not implemented"] of [TODO] to identify places where
+something must be added or modified.
+
+Altenatively, you can mix these additional elements with your current project.
+
+Advice:
+- Test your compiler with new IMP files tailored to trigger interesting
+  behaviours of the allocator.
+- The code is parametric in the set of registers used for various purposes
+  (see the beginning of [imp2mips.ml]). Do not hesitate to modify these sets
+  to make the tests more interesting. In particular, try with a limited
+  number of available registers.
+- Writing small functions for printing data on the allocation is useful for
+  debugging the allocator. For instance: printing the live sets, the live
+  intervals, or the steps of the allocator.
+
+Extensions
+----------
+You may implement any of these suggested extensions, or add your own.
+
+A. The current version of [imp2mips] fails when compiling an expression that
+   requires more registers than the 10 temporaries available.
+   Extension: add a mechanism to use the stack instead.
+
+B. In the simplest version of the allocator, each spilled variable is given a
+   separate slot on the stack. 
+   Extension: manage spilled variables with a second stage of linear scan
+   allocation, which allows reusing the stack slots that are not needed
+   anymore.
+   Remark: this does not require a second pass of the allocator. Adding code
+   to the case where a variable is spilled (and appropriate global data of
+   the allocator) is enough.
+   Difference of this second stage with respect to the first one: the set of
+   available slots on the stack is unlimited.
+
+C. The current version of [imp2mips] passes all function arguments on the stack.
+   Extension: use registers [$a0] to [$a3] for the first four parameters, and
+   the stack only starting from the fifth parameter.
+   Remark: at the very least, these registers have to be saved/restored at the
+   appropriate point of each function call. Their contents can also be
+   considered as a local variable that is managed by the allocator.
+
+D. Liveness analysis allows to identify "dead" [set] instructions, that is
+   instruction that set a variable with a value which will surely never be
+   used.
+   Extension: add a pass that remove these dead instructions.
+   Remark: you should not remove a set to a dead variable if the instruction
+   itself contains another possibly visible side-effect.
+
+E. The current version of [imp2mips] manages separately the registers for the
+   intermediate values of the computation of an expression and for the local
+   variables.
+   Extension: add a pass that flatten all expressions and explicitely uses
+   local variables for intermediate values. Then use only one allocation for
+   all these variables.
+
+Z. Replace linear scan allocation with graph coloring allocation.

@@ -1,0 +1,10 @@
+(ocamllex
+ (modules lexer implexer))
+(menhir
+ (modules parser impparser)
+ (flags --explain --dump)
+ (infer true))
+(executables
+ (names minimlc impc)
+ (promote (until-clean))
+ (flags ()))

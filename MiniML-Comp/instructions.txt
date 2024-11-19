@@ -1,0 +1,78 @@
+==============================
+ Translation of MiniML to IMP
+==============================
+
+The translation of our functional language MiniML to the core imperative
+language IMP contains three main tasks:
+
+- decomposing MiniML expressions into sequence of instructions
+- implementing MiniML functions as closures
+- decomposing pattern matching as cascades of 'if's
+
+This folder contains a code skeleton for performing the translation in
+two steps :
+
+1/ closure conversion: translate MiniML into an intermediate language Clj,
+   where MiniML functions are turned into global function definitions and
+   closures
+2/ generation of IMP code, from the intermediate Clj representation
+   (includes compilation of pattern matching)
+
+Note: MiniML and IMP are slightly different compared to the previous parts
+where they appeared
+- MiniML is simplified to accept only patterns with exactly one constructor;
+  if you want to deal with nested patterns, you may revert to the MiniML
+  definition and parser from first part (conversely, you may also use this
+  simplified version in the first part if you struggle with patterns)
+- IMP is extended with pointers, both for data and for functions
+
+
+Contents
+========
+
+This folder contains the following elements.
+
+Language definitions:
+  - miniml.ml   Source language
+  - clj.ml      Intermediate language
+  - imp.ml      Target language
+  - ops.ml      Shared definition of operators
+
+A working compiler from IMP to MIPS (including pointers)
+  - impparser.mly, implexer.mll     parsing
+  - imp2mips.ml                     simple translation
+  - impc.ml                         main file of the compiler
+  - malloc.imp                      naive allocation library
+
+A skeletal compiler from MiniML to CLJ
+  - parser.mly, lexer.mll       parsing
+  - mini2clj.ml                 first step of the translation [TO BE COMPLETED]
+  - clj2imp.ml                  second step of the translation [TO BE COMPLETED]
+  - minimlc.ml                  main file of the compiler
+  - imppp.ml                    pretty-printer for IMP (writes the output in a file)
+
+
+Main Task
+=========
+You have to complete the two files [mini2clj.ml] and [clj2imp.ml] to produce
+a compiler from MiniML to IMP, covering as many features of MiniML as you can.
+
+Hints
+-----
+Separating concerns allow you to test the basic parts of the compiler before
+going further. For instance, at the beginning you may assume that all variables
+in the source program have different names, and implement name disambiguation
+only in a second step.
+
+Here is suggested order, allowing language features to be tested indepently:
+1. Constants and arithmetic operations (tests/arith.ml)
+2. Variables and local definitions (tests/let.ml)
+3. Pairs and projections (tests/pair.ml)
+4. Conditional expressions (tests/if.ml)
+5. Functions and applications (tests/fun1.ml and tests/fun2.ml)
+6. Recursive functions (tests/fact.fun)
+7. Constructors and pattern matching (tests/trees.ml)
+You are encouraged to add more test files for each of the features.
+
+Your first priority should be to have a subset of the MiniML language that
+actually works. Coverage comes only second.
